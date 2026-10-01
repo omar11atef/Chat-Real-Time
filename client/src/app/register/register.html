@@ -1,0 +1,85 @@
+<form #registerForm="ngForm" (ngSubmit)="registerForm.valid && register()" class="md:flex justify-center items-center px-6 md:px-20 bg-white gap-10 min-h-screen">
+  <!-- Left Side: Background Illustration -->
+  <div 
+    class="hidden md:block h-[520px] w-3/5"
+    style="background-image: url('regsiter.svg'); background-repeat: no-repeat; background-size: contain; background-color: white; background-position: center bottom;">
+  </div>
+
+  <!-- Right Side: Registration Card -->
+  <div class="bg-white my-10 rounded-lg w-full md:w-80 flex flex-col gap-3 shadow-md border border-gray-100 p-6">
+    <div class="text-center">
+      <div class="flex justify-center">
+        <img 
+          [src]="profilePicture" 
+          alt="Profile Avatar"
+          class="rounded-full bg-blue-800 h-24 w-24 object-cover shadow" />
+      </div>
+      <div class="text-2xl my-2 font-medium text-gray-800">
+        Register
+      </div>
+    </div>
+
+    <div class="w-full flex flex-col gap-2">
+      <!-- Email Field -->
+      <mat-form-field class="w-full" appearance="fill">
+        <mat-label>Email</mat-label>
+        <input matInput name="email" [(ngModel)]="email" #emailModel="ngModel" placeholder="Email" required email />
+        <mat-error *ngIf="emailModel.hasError('required')">Email is required</mat-error>
+        <mat-error *ngIf="emailModel.hasError('email')">Please enter a valid email</mat-error>
+      </mat-form-field>
+
+      <!-- User Name Field -->
+      <mat-form-field class="w-full" appearance="fill">
+        <mat-label>User Name</mat-label>
+        <input matInput name="userName" [(ngModel)]="userName" #userNameModel="ngModel" placeholder="User Name" required />
+        <mat-error *ngIf="userNameModel.hasError('required')">User Name is required</mat-error>
+      </mat-form-field>
+
+      <!-- Full Name Field -->
+      <mat-form-field class="w-full" appearance="fill">
+        <mat-label>Full Name</mat-label>
+        <input matInput name="fullName" [(ngModel)]="fullName" #fullNameModel="ngModel" placeholder="Full Name" required />
+        <mat-error *ngIf="fullNameModel.hasError('required')">Full Name is required</mat-error>
+      </mat-form-field>
+
+      <!-- Password Field with Visibility Toggle -->
+      <mat-form-field class="w-full" appearance="fill">
+        <mat-label>Password</mat-label>
+        <input matInput [type]="hidePassword ? 'password' : 'text'" name="password" [(ngModel)]="password" #passwordModel="ngModel" placeholder="Password" required />
+        <button type="button" mat-icon-button matSuffix (click)="hidePassword = !hidePassword" [attr.aria-label]="'Toggle password visibility'" class="!text-white hover:!text-gray-200">
+          <mat-icon class="!text-white">{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+        <mat-error *ngIf="passwordModel.hasError('required')">Password is required</mat-error>
+      </mat-form-field>
+
+      <!-- Hidden File Input -->
+      <input type="file" #fileInput (change)="onFileSelected($event)" accept="image/*" class="hidden" />
+
+      <!-- Upload Image Button (Dark Green) -->
+      <button 
+        type="button" 
+        (click)="fileInput.click()" 
+        class="w-full bg-[#134e2c] hover:bg-[#0f4024] text-white py-2.5 px-4 rounded-md flex items-center justify-center gap-2 text-sm font-medium transition cursor-pointer my-1 shadow">
+        <mat-icon class="text-white">add_a_photo</mat-icon>
+        <span>Upload Image</span>
+      </button>
+
+      <!-- Register Button -->
+      <button 
+        type="submit" 
+        [disabled]="registerForm.invalid || isLoading"
+        class="w-full py-2.5 rounded-md font-medium text-sm transition mt-1 shadow cursor-pointer text-white disabled:bg-[#b8c0d9] disabled:cursor-not-allowed bg-[#1b3b8b] hover:bg-[#152e6d]">
+        {{ isLoading ? 'Registering...' : 'Register' }}
+      </button>
+
+      <!-- Error / Success Messages -->
+      <div *ngIf="errorMessage" class="text-xs text-red-400 text-center font-medium mt-1">
+        {{ errorMessage }}
+      </div>
+      <div *ngIf="successMessage" class="text-xs text-emerald-400 text-center font-medium mt-1">
+        {{ successMessage }}
+      </div>
+    </div>
+  </div>
+</form>
+
