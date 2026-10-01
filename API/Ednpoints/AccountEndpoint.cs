@@ -6,7 +6,6 @@ using API.Services;
 using API.Extenions;
 using Microsoft.EntityFrameworkCore;
 
-
 namespace API.Endpoints;
 
 public static class AccountEndpoint
@@ -64,13 +63,14 @@ public static class AccountEndpoint
             return Results.Ok(Response<string>.Success(token,"Login Successfully")) ;
         });
 
-        _ = group.MapGet("/me", async (HttpContext httpContext, UserManager<AppUser> userManager) =>
+        group.MapGet("/me", async (HttpContext httpContext, UserManager<AppUser> userManager) =>
         {
             var currentLoggedInUserId = httpContext.User.GetUserId()!;
             var currentLoggedInUser = await userManager.Users
                 .SingleOrDefaultAsync(x => x.Id == currentLoggedInUserId.ToString());
 
-
+            return Results.Ok(Response<AppUser>
+                .Success(currentLoggedInUser!, "Current Logged In User"));
 
         }).RequireAuthorization();
         return group;

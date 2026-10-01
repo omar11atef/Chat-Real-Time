@@ -9,4 +9,9 @@ export class AuthService {
     httpClient = inject(HttpClient);
 
     register(data:FormData) :Observable<ApiResponse<string>>{
-        return this.httpC
+        return this.httpClient.post<ApiResponse<string>>(`${this.baseUrl}/register`, data)
+        .pipe(tap((response) => {
+            localStorage.setItem('token', response.data);
+        }));
+    }
+}
