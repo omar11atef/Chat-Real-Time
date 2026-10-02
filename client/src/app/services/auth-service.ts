@@ -8,23 +8,13 @@ import { User } from '../models/user';
   providedIn: 'root'
 })
 export class AuthService {
+
+    token(token: any): string | null {
+        throw new Error('Method not implemented.');
+    }
     private baseUrl = 'http://localhost:5000/api/account';
     private tokenKey = 'token';
     httpClient = inject(HttpClient);
-
-    isLoggedIn(): boolean {
-        return !!this.getToken();
-    }
-
-    IsLoggedIn(): boolean {
-        return this.isLoggedIn();
-    }
-
-    logout(): void {
-        localStorage.removeItem(this.tokenKey);
-        localStorage.removeItem('user');
-        document.cookie = `token=; path=/; max-age=0; SameSite=Lax`;
-    }
 
     register(data: FormData): Observable<ApiResponse<string>> {
         return this.httpClient.post<ApiResponse<string>>(`${this.baseUrl}/register`, data)
@@ -74,7 +64,14 @@ export class AuthService {
     );
 }
 
-get getAccessToken(): string | null {
-  return localStorage.getItem(this.tokenKey) || '';
-}
+    get getAccessToken(): string | null {
+        return localStorage.getItem(this.tokenKey) || '';
+    }
+    IsLoggedIn(): boolean {
+        return !!localStorage.getItem(this.tokenKey);
+    }
+    logout(){
+        localStorage.removeItem(this.tokenKey);
+        localStorage.removeItem('user');
+    }
 }
