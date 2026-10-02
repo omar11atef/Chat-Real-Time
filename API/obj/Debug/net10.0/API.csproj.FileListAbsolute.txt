@@ -167,3 +167,4 @@ E:\Project .NET\Chat-Real-Time\API\bin\Debug\net10.0\Microsoft.AspNetCore.Authen
 E:\Project .NET\Chat-Real-Time\API\bin\Debug\net10.0\Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
 E:\Project .NET\Chat-Real-Time\API\bin\Debug\net10.0\Microsoft.Bcl.Cryptography.dll
 E:\Project .NET\Chat-Real-Time\API\bin\Debug\net10.0\API.staticwebassets.runtime.json
+E:\Project .NET\Chat-Real-Time\API\obj\Debug\net10.0\API.sourcelink.json

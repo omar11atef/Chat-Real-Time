@@ -2,3 +2,56 @@
 @import "tailwindcss";
 @import "@angular/material/prebuilt-themes/pink-bluegrey.css";
 
+/* Blue Snackbar Notification */
+.mat-mdc-snack-bar-container.blue-snackbar .mdc-snackbar__surface,
+.blue-snackbar .mdc-snackbar__surface {
+  background-color: #2563eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+  min-height: 48px !important;
+}
+
+.mat-mdc-snack-bar-container.blue-snackbar .mat-mdc-snack-bar-label,
+.blue-snackbar .mat-mdc-snack-bar-label,
+.blue-snackbar .mdc-snackbar__label {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  opacity: 1 !important;
+}
+
+.mat-mdc-snack-bar-container.blue-snackbar .mat-mdc-snack-bar-action button,
+.blue-snackbar .mat-mdc-snack-bar-action button,
+.blue-snackbar .mat-mdc-button .mdc-button__label,
+.blue-snackbar button {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+}
+
+/* Error Snackbar Notification */
+.mat-mdc-snack-bar-container.error-snackbar .mdc-snackbar__surface,
+.error-snackbar .mdc-snackbar__surface {
+  background-color: #dc2626 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+  min-height: 48px !important;
+}
+
+.mat-mdc-snack-bar-container.error-snackbar .mat-mdc-snack-bar-label,
+.error-snackbar .mat-mdc-snack-bar-label,
+.error-snackbar .mdc-snackbar__label {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  opacity: 1 !important;
+}
+
+.mat-mdc-snack-bar-container.error-snackbar .mat-mdc-snack-bar-action button,
+.error-snackbar .mat-mdc-snack-bar-action button,
+.error-snackbar .mat-mdc-button .mdc-button__label,
+.error-snackbar button {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
