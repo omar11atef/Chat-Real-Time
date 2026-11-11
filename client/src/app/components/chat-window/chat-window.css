@@ -1,0 +1,252 @@
+.window-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Empty State with chatopen.svg matching media_1790965433066.png */
+.empty-window-state {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  box-sizing: border-box;
+  background-color: #ffffff;
+}
+
+.illustration-box {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: floatSubtle 4s ease-in-out infinite alternate;
+}
+
+.empty-illustration {
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.04));
+}
+
+@keyframes floatSubtle {
+  0% {
+    transform: translateY(0px);
+  }
+  100% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Active Conversation Header */
+.chat-header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid #f1f5f9;
+  background-color: #ffffff;
+}
+
+.recipient-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recipient-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #e2e8f0;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.recipient-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.recipient-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.recipient-status {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.online-badge, .offline-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.online-badge {
+  color: #16a34a;
+}
+
+.offline-badge {
+  color: #94a3b8;
+}
+
+.status-dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+}
+
+.status-dot.online {
+  background-color: #22c55e;
+}
+
+.status-dot.offline {
+  background-color: #cbd5e1;
+}
+
+/* Message Input Area */
+.message-input-area {
+  padding: 12px 18px;
+  background-color: #ffffff;
+  border-top: 1px solid #f1f5f9;
+}
+
+.composer-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.composer-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.composer-icon-btn:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.composer-icon-btn.active {
+  background-color: #eef2ff;
+  color: #2563eb;
+}
+
+.composer-svg {
+  width: 22px;
+  height: 22px;
+}
+
+.input-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input-container:focus-within {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.chat-text-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 14.5px;
+  color: #1e293b;
+  padding: 2px 0;
+}
+
+.chat-text-input::placeholder {
+  color: #9ca3af;
+}
+
+.send-message-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+
+.send-message-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.send-icon {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+}
+
+/* Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

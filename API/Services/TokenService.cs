@@ -25,7 +25,9 @@ public class TokenService(IConfiguration configuration)
         {
             Subject = new(claim),
             Expires = DateTime.UtcNow.AddDays(1),
-            SigningCredentials= new(new SymmetricSecurityKey(key),SecurityAlgorithms.HmacSha256)
+            Issuer = _configuration["Jwt:Issuer"],
+            Audience = _configuration["Jwt:Audience"],
+            SigningCredentials = new(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
         };
 
         var token = tokenHandler.CreateToken(tokenDescriptor);

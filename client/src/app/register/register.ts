@@ -4,13 +4,14 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 @Component({
-  imports: [CommonModule, MatFormFieldModule, FormsModule, MatButtonModule, MatInputModule, MatIconModule],
+  imports: [CommonModule, MatFormFieldModule, FormsModule, MatButtonModule, MatInputModule, MatIconModule, MatSnackBarModule, RouterLink],
   selector: 'app-register',
   styleUrl: './register.css',
   templateUrl: './register.html',
@@ -29,6 +30,7 @@ export class Register {
 
   authservice = inject(AuthService);
   router = inject(Router);
+  private snackBar = inject(MatSnackBar);
 
   onFileSelected(event: any) {
     const file = event.target.files?.[0];
@@ -43,9 +45,16 @@ export class Register {
   }
 
   register() {
+    if (this.isLoading) return;
+
     if (!this.profileImage) {
-      this.errorMessage = 'يرجى اختيار صورة للبروفايل أولاً (Profile picture is required)';
-      alert(this.errorMessage);
+      this.errorMessage = 'Profile picture is required';
+      this.snackBar.open(this.errorMessage, 'Close', {
+        duration: 3500,
+        verticalPosition: 'top',
+        horizontalPosition: 'center',
+        panelClass: ['error-snackbar']
+      });
       return;
     }
 
@@ -63,15 +72,27 @@ export class Register {
     this.authservice.register(formData).subscribe({
       next: (response: any) => {
         this.isLoading = false;
-        console.log('Registration success:', response);
         this.successMessage = response?.message || 'User created successfully';
-        alert(this.successMessage);
+        this.snackBar.open(this.successMessage, 'Close', {
+          duration: 3000,
+          verticalPosition: 'top',
+          horizontalPosition: 'center',
+          panelClass: ['blue-snackbar']
+        });
+        setTimeout(() => {
+          this.router.navigate(['/login']);
+        }, 800);
       },
       error: (err: any) => {
         this.isLoading = false;
         console.error('Registration failed:', err);
-        this.errorMessage = err?.error?.message || err?.error?.error || 'Registration failed';
-        alert(this.errorMessage);
+        this.errorMessage = err?.error?.error || err?.error?.message || 'Registration failed';
+        this.snackBar.open(this.errorMessage, 'Close', {
+          duration: 3500,
+          verticalPosition: 'top',
+          horizontalPosition: 'center',
+          panelClass: ['error-snackbar']
+        });
       }
     });
   }

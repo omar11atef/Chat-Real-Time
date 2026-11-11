@@ -1,0 +1,30 @@
+<div class="right-sidebar-wrapper">
+  @if (selectedUser) {
+    <div class="profile-summary">
+      <div class="profile-avatar-frame">
+        @if (getAvatarUrl(selectedUser)) {
+          <img
+            [src]="getAvatarUrl(selectedUser)"
+            [alt]="selectedUser.fullName || selectedUser.userName || 'User profile'"
+            (error)="onImageError()"
+            class="profile-avatar-img"
+          />
+        } @else {
+          <div class="profile-avatar-fallback">
+            {{ getInitials(selectedUser.fullName || selectedUser.userName) }}
+          </div>
+        }
+      </div>
+
+      <h3 class="profile-name">
+        {{ (selectedUser.fullName || selectedUser.userName) | titlecase }}
+      </h3>
+
+      @if (selectedUser.email || selectedUser.userName) {
+        <p class="profile-email" [title]="selectedUser.email || selectedUser.userName || ''">
+          {{ selectedUser.email || ('@' + selectedUser.userName) }}
+        </p>
+      }
+    </div>
+  }
+</div>

@@ -1,11 +1,16 @@
 export interface User {
-    id:string;
-    profilePicture: string;
-    photoUrl: string;
-    fullName: string;
-    userName: string;
-    connectionId: string;
-    lastMessage: string;
-    unreadCount: number;
-    IsTyping: boolean;
+    id?: string;
+    profilePicture?: string;
+    profileImage?: string;
+    photoUrl?: string;
+    fullName?: string;
+    userName?: string;
+    email?: string;
+    connectionId?: string;
+    lastMessage?: string;
+    unreadCount?: number;
+    isTyping?: boolean;
+    IsTyping?: boolean;
+    isOnline?: boolean;
+    IsOnline?: boolean;
 }

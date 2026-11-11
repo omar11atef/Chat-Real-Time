@@ -1,1 +1,158 @@
-<p>chat-window works!</p>
+<div class="window-wrapper">
+  @if (!selectedUser) {
+    <!-- Empty State matching media_1790965433066.png with chatopen.svg -->
+    <div class="empty-window-state">
+      <div class="illustration-box">
+        <img src="chatopen.svg" alt="Chat Empty State" class="empty-illustration" />
+      </div>
+    </div>
+  } @else {
+    <!-- Active Chat Header -->
+    <div class="chat-header">
+      <div class="recipient-info">
+        <div class="recipient-avatar">
+          @if (getAvatarUrl(selectedUser)) {
+            <img [src]="getAvatarUrl(selectedUser)" [alt]="selectedUser?.fullName || 'Avatar'" class="avatar-img" />
+          } @else {
+            <div class="avatar-fallback">
+              {{ getInitials(selectedUser?.fullName || selectedUser?.userName) }}
+            </div>
+          }
+        </div>
+        <div class="recipient-details">
+          <h3 class="recipient-name">
+            {{ selectedUser?.fullName || selectedUser?.userName }}
+          </h3>
+          <span class="recipient-status">
+            @if (selectedUser?.isTyping || selectedUser?.IsTyping) {
+              <span class="typing-indicator-row header-typing">
+                <span>Typing...</span>
+                <span class="typing-dots" aria-hidden="true">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                </span>
+              </span>
+            } @else if (selectedUser?.isOnline || selectedUser?.IsOnline) {
+              <span class="online-badge">
+                <span class="status-dot online"></span>
+                <span>Online</span>
+              </span>
+            } @else {
+              <span class="offline-badge">
+                <span class="status-dot offline"></span>
+                <span>Offline</span>
+              </span>
+            }
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages List -->
+    <app-chat-box [selectedUser]="selectedUser"></app-chat-box>
+
+    <!-- Message Input Bar -->
+    <div class="message-input-area">
+      <div class="composer-row">
+        <!-- Camera Icon Button -->
+        <button type="button" class="composer-icon-btn" aria-label="Attach photo" title="Attach photo">
+          <svg class="composer-svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.65 0-3 1.35-3 3s1.35 3 3 3 3-1.35 3-3-1.35-3-3-3z"/>
+          </svg>
+        </button>
+
+        <!-- Emoji Icon Button & Grouped Picker -->
+        <div class="emoji-picker-container relative flex items-center">
+          @if (isEmojiPickerOpen()) {
+            <div
+              class="absolute bottom-[calc(100%+12px)] -left-11 w-[min(300px,calc(100vw-44px))] bg-white border border-slate-200 rounded-[14px] shadow-[0_12px_30px_rgba(15,23,42,0.14)] p-2.5 z-30"
+              role="dialog"
+              aria-label="Emoji picker">
+              <div class="grid grid-cols-5 gap-1 pb-2 border-b border-slate-100" role="tablist" aria-label="Emoji categories">
+                @for (group of emojiGroups; track group.id) {
+                  <button
+                    type="button"
+                    role="tab"
+                    class="h-8 border-x-0 border-t-0 border-b-2 border-solid rounded-t-lg rounded-b-none text-lg cursor-pointer flex items-center justify-center transition-colors hover:bg-slate-100"
+                    [class.bg-blue-50]="selectedEmojiGroupId() === group.id"
+                    [class.border-blue-600]="selectedEmojiGroupId() === group.id"
+                    [class.border-transparent]="selectedEmojiGroupId() !== group.id"
+                    [attr.aria-selected]="selectedEmojiGroupId() === group.id"
+                    [attr.aria-label]="group.label"
+                    [title]="group.label"
+                    (click)="selectEmojiGroup(group.id)">
+                    {{ group.icon }}
+                  </button>
+                }
+              </div>
+
+              <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-1 pt-2 pb-1.5">{{ activeEmojiGroup().label }}</div>
+
+              <div class="grid grid-cols-8 gap-0.5 max-h-[180px] overflow-y-auto custom-scrollbar">
+                @for (emoji of activeEmojiGroup().emojis; track $index) {
+                  <button
+                    type="button"
+                    class="h-[34px] border-0 rounded-lg bg-transparent text-xl leading-none cursor-pointer flex items-center justify-center transition duration-100 hover:bg-slate-100 hover:scale-110"
+                    [attr.aria-label]="'Insert ' + emoji"
+                    (click)="insertEmoji(emoji)">
+                    {{ emoji }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <button
+            type="button"
+            class="composer-icon-btn"
+            [class.active]="isEmojiPickerOpen()"
+            [attr.aria-expanded]="isEmojiPickerOpen()"
+            aria-label="Insert emoji"
+            title="Insert emoji"
+            (click)="toggleEmojiPicker($event)">
+            <svg class="composer-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9.5" />
+              <path d="M8.5 14.2c1 1.6 2.3 2.3 3.5 2.3s2.5-.7 3.5-2.3" />
+              <path d="M8.5 9.8c.4-.6 1.1-.6 1.5 0" />
+              <path d="M14 9.8c.4-.6 1.1-.6 1.5 0" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Pill Message Input -->
+        <div class="input-container">
+          <input 
+            #messageInput
+            type="text" 
+            [(ngModel)]="newMessage" 
+            (input)="onTyping()"
+            (keydown.enter)="sendMessage()" 
+            placeholder="Type your message here!" 
+            class="chat-text-input" 
+          />
+        </div>
+
+        <!-- Microphone (idle) / Send (when typing) -->
+        @if (newMessage.trim()) {
+          <button 
+            type="button" 
+            (click)="sendMessage()" 
+            class="send-message-btn" 
+            aria-label="Send"
+            title="Send">
+            <svg class="send-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        } @else {
+          <button type="button" class="composer-icon-btn" aria-label="Voice message" title="Voice message">
+            <svg class="composer-svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+            </svg>
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

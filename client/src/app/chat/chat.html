@@ -1,1 +1,23 @@
-<p>chat works!</p>
+<div class="chat-viewport">
+  <div class="chat-card">
+    <app-chat-sidebar 
+      [selectedUser]="selectedUser()"
+      (userSelected)="onUserSelected($event)" 
+      (chatClosed)="onChatClosed()"
+      (logoutClicked)="logout()"
+      class="chat-sidebar-pane">
+    </app-chat-sidebar>
+
+    <app-chat-window 
+      [selectedUser]="selectedUser()"
+      class="chat-window-pane">
+    </app-chat-window>
+
+    @if (selectedUser()) {
+      <app-chat-right-sildebar
+        [selectedUser]="selectedUser()"
+        class="chat-right-sidebar-pane">
+      </app-chat-right-sildebar>
+    }
+  </div>
+</div>

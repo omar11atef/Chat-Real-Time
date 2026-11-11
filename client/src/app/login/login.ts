@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../services/auth-service';
+import { Chat } from '../services/chat';
 
 @Component({
   imports: [
@@ -34,22 +35,24 @@ export class Login {
   successMessage: string = '';
 
   private authService = inject(AuthService);
+  private chatService = inject(Chat);
   private snackBar = inject(MatSnackBar);
   private router = inject(Router);
 
   login() {
+    if (this.isLoading) return;
+    this.chatService.requestNotificationPermission();
     this.isLoading = true;
     this.errorMessage = '';
     this.successMessage = '';
 
     this.authService.login(this.email, this.password).subscribe({
       next: (response) => {
-        this.authService.me().subscribe();
         this.isLoading = false;
         this.successMessage = response?.message || 'Logged in successfully';
 
         this.snackBar.open('Logged in successfully', 'Close', {
-          duration: 3500,
+          duration: 2500,
           verticalPosition: 'top',
           horizontalPosition: 'center',
           panelClass: ['blue-snackbar']
@@ -57,7 +60,7 @@ export class Login {
 
         setTimeout(() => {
           this.router.navigate(['/']);
-        }, 1200);
+        }, 800);
       },
       error: (err) => {
         this.isLoading = false;

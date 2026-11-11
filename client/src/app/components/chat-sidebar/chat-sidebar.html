@@ -1,1 +1,126 @@
-<p>chat-sidebar works!</p>
+<div class="sidebar-wrapper">
+  <!-- Top User Profile Bar -->
+  <div class="sidebar-header">
+    <button
+      type="button"
+      (click)="closeActiveChat()"
+      class="user-profile-info user-profile-btn"
+      title="Back to chat home"
+      aria-label="Back to chat home">
+      <div class="avatar-wrapper">
+        @if (getAvatarUrl(currentUser())) {
+          <img [src]="getAvatarUrl(currentUser())" [alt]="currentUser()?.fullName || 'Avatar'" class="avatar-img" />
+        } @else {
+          <div class="avatar-fallback">
+            {{ getInitials(currentUser()?.fullName || currentUser()?.userName) }}
+          </div>
+        }
+      </div>
+      <span class="current-user-name" [title]="currentUser()?.fullName || currentUser()?.userName || ''">
+        {{ currentUser()?.fullName || currentUser()?.userName || 'User' }}
+      </span>
+    </button>
+
+    <!-- 3-Dots Menu Button & Dark Dropdown -->
+    <div class="relative dropdown-container">
+      <button 
+        type="button" 
+        (click)="toggleMenu($event)" 
+        class="dots-btn" 
+        aria-label="Options">
+        <svg class="dots-icon" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="5" r="1.75" />
+          <circle cx="12" cy="12" r="1.75" />
+          <circle cx="12" cy="19" r="1.75" />
+        </svg>
+      </button>
+
+      <!-- Dark Dropdown Menu matching media_1790965433076.png -->
+      @if (isMenuOpen()) {
+        <div class="dark-dropdown">
+          <button 
+            type="button" 
+            (click)="logout()" 
+            class="dropdown-logout-item">
+            <svg class="logout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Logout</span>
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Search Input Bar -->
+  <div class="search-section">
+    <div class="search-input-wrapper">
+      <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <circle cx="11" cy="11" r="7" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" stroke-linecap="round" />
+      </svg>
+      <input 
+        type="text" 
+        [ngModel]="searchTerm()"
+        (ngModelChange)="searchTerm.set($event)"
+        placeholder="Search" 
+        class="search-input"
+      />
+    </div>
+  </div>
+
+  <!-- Contacts List -->
+  <div class="contacts-list custom-scrollbar">
+    @for (user of filteredUsers(); track (user.id || user.userName)) {
+      <div 
+        (click)="selectUser(user)" 
+        [class.selected]="isSelected(user)"
+        class="contact-row">
+        <!-- Contact Avatar -->
+        <div class="contact-avatar">
+          @if (getAvatarUrl(user)) {
+            <img [src]="getAvatarUrl(user)" [alt]="user.fullName || 'User'" class="avatar-img" />
+          } @else {
+            <div class="avatar-fallback">
+              {{ getInitials(user.fullName || user.userName) }}
+            </div>
+          }
+        </div>
+
+        <!-- Contact Name & Subtitle -->
+        <div class="contact-meta">
+          <span class="contact-name">
+            {{ (user.fullName || user.userName) | titlecase }}
+          </span>
+          @if (user.isTyping || user.IsTyping) {
+            <span class="contact-typing typing-indicator-row">
+              <span>Typing...</span>
+              <span class="typing-dots" aria-hidden="true">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </span>
+            </span>
+          } @else if (user.unreadCount) {
+            <span class="contact-unread">
+              {{ user.unreadCount }} new messages
+            </span>
+          }
+        </div>
+
+        <!-- Online (Green) / Offline (Gray) Indicator -->
+        <div class="status-dot-wrapper">
+          @if (user.isOnline || user.IsOnline) {
+            <div class="status-dot-indicator online" title="Online" aria-label="Online"></div>
+          } @else {
+            <div class="status-dot-indicator offline" title="Offline" aria-label="Offline"></div>
+          }
+        </div>
+      </div>
+    } @empty {
+      <div class="empty-contacts">
+        {{ isLoadingUsers() ? 'Loading contacts...' : 'No contacts found' }}
+      </div>
+    }
+  </div>
+</div>

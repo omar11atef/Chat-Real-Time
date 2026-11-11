@@ -60,7 +60,8 @@ builder.Services.AddAuthentication(options =>
         {
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            if (!string.IsNullOrEmpty(accessToken) && 
+                (path.StartsWithSegments("/hubs") || path.StartsWithSegments("/chatHub")))
             {
                 context.Token = accessToken;
             }
@@ -87,6 +88,8 @@ app.UseAuthorization();
 app.MapAccountEndpoints();
 app.UseStaticFiles();
 app.MapHub<ChatHub>("hubs/chat");
+app.MapHub<ChatHub>("chatHub");
+app.MapHub<VideoHub>("/hubs/video");
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)

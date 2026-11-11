@@ -22,6 +22,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/assecc",
+                "output": "assecc"
               }
             ],
             "styles": ["src/material-theme.scss", "src/styles.css"]
