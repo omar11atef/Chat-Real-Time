@@ -1,9 +1,10 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { User } from '../models/user';
-import { Message } from '../models/message';
+import { ChatAttachment, Message, MessageReaction } from '../models/message';
 import { AuthService } from './auth-service';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
+import { CallLogPayload, encodeCallLog, formatCallLogSummary, parseCallLog } from '../utils/call-log';
 
 @Injectable({
     providedIn: 'root'
@@ -148,7 +149,11 @@ export class Chat {
         this.chatMessages.set([]);
         this.hasMoreMessages.set(false);
         this.onlineUsers.update(users =>
-            users.map(u => (this.isSameUser(u, user) ? { ...u, unreadCount: 0 } : u))
+            users.map(u =>
+                this.isSameUser(u, user)
+                    ? { ...u, unreadCount: 0, lastReactionText: undefined }
+                    : u
+            )
         );
         this.loadMessages(1);
     }
@@ -207,6 +212,49 @@ export class Chat {
         }
     }
 
+    async sendCallLog(receiverId: string, log: CallLogPayload): Promise<void> {
+        if (!receiverId) {
+            return;
+        }
+
+        if (this.startPromise) {
+            await this.startPromise;
+        }
+
+        if (!this.hubConnection || this.hubConnection.state !== HubConnectionState.Connected) {
+            return;
+        }
+
+        try {
+            await this.hubConnection.invoke('SendMessage', {
+                receiverId,
+                content: encodeCallLog(log),
+                isRead: false
+            });
+        } catch (err) {
+            console.error('Error sending call log:', err);
+        }
+    }
+
+    appendMessageIfMissing(message: Message): void {
+        if (!message) return;
+        const normalized = this.normalizeMessage(message);
+        const openedId = this.currentOpenedChat()?.id;
+        const selfId = this.getCurrentIdentity().id;
+        const belongsToOpenChat =
+            !!openedId &&
+            ((normalized.senderId === openedId && (!selfId || normalized.receiverId === selfId)) ||
+             (normalized.receiverId === openedId && (!selfId || normalized.senderId === selfId)));
+        if (!belongsToOpenChat) return;
+
+        this.chatMessages.update(messages => {
+            if (normalized.id && messages.some(m => m.id === normalized.id)) {
+                return messages;
+            }
+            return [...messages, normalized];
+        });
+    }
+
     notifyTyping(): void {
         const recipientUserName = this.currentOpenedChat()?.userName;
         if (!recipientUserName || !this.hubConnection || this.hubConnection.state !== HubConnectionState.Connected) {
@@ -235,6 +283,24 @@ export class Chat {
         }
     }
 
+    async reactToMessage(messageId: number, emoji: string): Promise<void> {
+        const cleanEmoji = emoji?.trim();
+        if (!messageId || !cleanEmoji) {
+            return;
+        }
+        if (this.startPromise) {
+            await this.startPromise;
+        }
+        if (!this.hubConnection || this.hubConnection.state !== HubConnectionState.Connected) {
+            return;
+        }
+        try {
+            await this.hubConnection.invoke('ReactToMessage', messageId, cleanEmoji);
+        } catch (err) {
+            console.error('Error reacting to message:', err);
+        }
+    }
+
     getCurrentUserId(): string | undefined {
         return this.getCurrentIdentity().id;
     }
@@ -255,11 +321,13 @@ export class Chat {
                     return true;
                 })
                 .map(user => {
+                    const prev = prevUsers.find(u => this.isSameUser(u, user));
                     const isTyping = Boolean(
                         user.userName && typingKeys.has(user.userName.toLowerCase())
                     );
                     return {
                         ...this.normalizeUser(user, Boolean(user.isOnline ?? user.IsOnline)),
+                        lastReactionText: prev?.lastReactionText,
                         isTyping,
                         IsTyping: isTyping
                     };
@@ -394,7 +462,9 @@ export class Chat {
                 ((normalized.senderId === openedId && (!selfId || normalized.receiverId === selfId)) ||
                  (normalized.receiverId === openedId && (!selfId || normalized.senderId === selfId)));
 
-            if (isIncomingFromOther) {
+            const callLog = parseCallLog(normalized.content);
+
+            if (isIncomingFromOther && !callLog) {
                 this.playNotificationSound();
             }
 
@@ -422,7 +492,12 @@ export class Chat {
                     )
                 );
                 const senderName = sender?.fullName || sender?.userName || 'New message';
-                const preview = normalized.content || 'Sent a message';
+                const attachmentPreview = normalized.attachment
+                    ? `${normalized.attachment.fileCategory === 'image' ? 'Sent an image' : 'Sent a file'}: ${normalized.attachment.originalFileName}`
+                    : null;
+                const preview = callLog
+                    ? formatCallLogSummary(callLog)
+                    : (normalized.content || attachmentPreview || 'Sent a message');
                 this.showBrowserNotification(
                     senderName,
                     preview,
@@ -446,6 +521,64 @@ export class Chat {
             this.chatMessages.update(messages =>
                 messages.map(m => (readIds.has(m.id) ? { ...m, isRead: true } : m))
             );
+        });
+
+        connection.on('ReceiveReaction', (rawPayload: Record<string, unknown>) => {
+            if (this.hubConnection !== connection || !rawPayload) return;
+
+            const messageId = Number(rawPayload['messageId'] ?? rawPayload['MessageId'] ?? 0);
+            const senderId = (rawPayload['senderId'] ?? rawPayload['SenderId'] ?? null) as string | null;
+            const receiverId = (rawPayload['receiverId'] ?? rawPayload['ReceiverId'] ?? null) as string | null;
+            const reactedByUserId = String(rawPayload['reactedByUserId'] ?? rawPayload['ReactedByUserId'] ?? '');
+            const reactedByName = String(rawPayload['reactedByName'] ?? rawPayload['ReactedByName'] ?? 'Someone');
+            const emoji = String(rawPayload['emoji'] ?? rawPayload['Emoji'] ?? '');
+            const action = String(rawPayload['action'] ?? rawPayload['Action'] ?? '');
+            const rawReactions = (rawPayload['reactions'] ?? rawPayload['Reactions']) as unknown[] | undefined;
+
+            if (!messageId) return;
+
+            const reactions = this.normalizeReactions(rawReactions);
+            const selfId = this.getCurrentIdentity().id;
+            const openedId = this.currentOpenedChat()?.id;
+            const peerId = senderId && selfId && senderId === selfId ? receiverId : senderId;
+
+            this.chatMessages.update(messages =>
+                messages.map(m => (m.id === messageId ? { ...m, reactions } : m))
+            );
+
+            const isFromOther = Boolean(reactedByUserId && reactedByUserId !== selfId);
+            const belongsToOpenChat =
+                !!openedId &&
+                ((senderId === openedId && (!selfId || receiverId === selfId)) ||
+                 (receiverId === openedId && (!selfId || senderId === selfId)));
+
+            if (isFromOther && action !== 'removed' && emoji) {
+                const reactionNotice = `Reacted ${emoji} to your message`;
+                if (!belongsToOpenChat && (peerId || reactedByUserId)) {
+                    const targetUserId = peerId || reactedByUserId;
+                    const sender = this.onlineUsers().find(u => u.id === targetUserId);
+                    this.onlineUsers.update(users =>
+                        users.map(u =>
+                            u.id === targetUserId
+                                ? { ...u, lastReactionText: reactionNotice }
+                                : u
+                        )
+                    );
+                    const displayName = sender?.fullName || sender?.userName || reactedByName;
+                    this.showBrowserNotification(
+                        displayName,
+                        reactionNotice,
+                        sender?.profilePicture || sender?.profileImage || sender?.photoUrl,
+                        `react-${messageId}-${Date.now()}`
+                    );
+                    this.snackBar.open(`${displayName}: ${reactionNotice}`, 'Close', {
+                        duration: 3000,
+                        verticalPosition: 'top',
+                        horizontalPosition: 'right',
+                        panelClass: ['blue-snackbar']
+                    });
+                }
+            }
         });
 
         connection.onreconnecting(() => {
@@ -627,10 +760,53 @@ export class Chat {
     }
 
     private normalizeMessage(message: Message): Message {
+        const raw = message as unknown as Record<string, unknown>;
+        const rawAttachment = (message.attachment ?? raw['Attachment']) as Record<string, unknown> | null | undefined;
+        let attachment: ChatAttachment | null = null;
+
+        if (rawAttachment) {
+            attachment = {
+                id: Number(rawAttachment['id'] ?? rawAttachment['Id'] ?? 0),
+                messageId: (rawAttachment['messageId'] ?? rawAttachment['MessageId'] ?? null) as number | null,
+                originalFileName: String(rawAttachment['originalFileName'] ?? rawAttachment['OriginalFileName'] ?? 'file'),
+                contentType: String(rawAttachment['contentType'] ?? rawAttachment['ContentType'] ?? 'application/octet-stream'),
+                fileExtension: String(rawAttachment['fileExtension'] ?? rawAttachment['FileExtension'] ?? ''),
+                fileCategory: String(rawAttachment['fileCategory'] ?? rawAttachment['FileCategory'] ?? 'text'),
+                fileSize: Number(rawAttachment['fileSize'] ?? rawAttachment['FileSize'] ?? 0),
+                downloadUrl: String(rawAttachment['downloadUrl'] ?? rawAttachment['DownloadUrl'] ?? ''),
+                isEncrypted: Boolean(rawAttachment['isEncrypted'] ?? rawAttachment['IsEncrypted'] ?? true),
+                createdAt: (rawAttachment['createdAt'] ?? rawAttachment['CreatedAt']) as string | undefined,
+            };
+        }
+
+        const rawReactions = (message.reactions ?? raw['Reactions']) as unknown[] | undefined;
+
         return {
             ...message,
-            isRead: Boolean(message.isRead ?? (message as any).IsRead)
+            id: Number(message.id ?? raw['Id'] ?? 0),
+            senderId: (message.senderId ?? raw['SenderId'] ?? null) as string | null,
+            receiverId: (message.receiverId ?? raw['ReceiverId'] ?? null) as string | null,
+            content: (message.content ?? raw['Content'] ?? '') as string | null,
+            createdData: String(message.createdData ?? raw['CreatedData'] ?? ''),
+            isRead: Boolean(message.isRead ?? raw['IsRead']),
+            attachmentId: (message.attachmentId ?? raw['AttachmentId'] ?? attachment?.id ?? null) as number | null,
+            attachment,
+            reactions: this.normalizeReactions(rawReactions),
         };
+    }
+
+    private normalizeReactions(rawReactions?: unknown[]): MessageReaction[] {
+        if (!Array.isArray(rawReactions)) return [];
+        return rawReactions.map((item) => {
+            const r = (item ?? {}) as Record<string, unknown>;
+            return {
+                id: Number(r['id'] ?? r['Id'] ?? 0),
+                messageId: Number(r['messageId'] ?? r['MessageId'] ?? 0),
+                userId: String(r['userId'] ?? r['UserId'] ?? ''),
+                emoji: String(r['emoji'] ?? r['Emoji'] ?? ''),
+                createdAt: (r['createdAt'] ?? r['CreatedAt']) as string | undefined,
+            };
+        }).filter((r) => Boolean(r.emoji && r.userId));
     }
 
     private normalizeUser(user: User, isOnline: boolean): User {

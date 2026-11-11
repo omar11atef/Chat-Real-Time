@@ -13,6 +13,9 @@ public class Meesage
     public string? Content {get;set;}
     public DateTime CreatedData {get;set;}
     public bool IsRead {get;set;}
+    public int? AttachmentId {get;set;}
+    public ChatAttachment? Attachment {get;set;}
+    public List<MessageReaction> Reactions {get;set;} = [];
     public AppUser? Sender {get;set;}
     public AppUser? Receiver {get;set;}
 }

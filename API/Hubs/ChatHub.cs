@@ -194,7 +194,10 @@ public class ChatHub(UserManager<AppUser> userManger, AppDbcontext context) : Hu
                 ReceiverId = m.ReceiverId,
                 Content = m.Content,
                 CreatedData = m.CreatedData,
-                IsRead = m.IsRead
+                IsRead = m.IsRead,
+                AttachmentId = m.AttachmentId,
+                Attachment = m.Attachment,
+                Reactions = m.Reactions.OrderBy(r => r.CreatedAt).ToList()
             }).ToListAsync();
 
         var unreadIds = messages
@@ -221,6 +224,90 @@ public class ChatHub(UserManager<AppUser> userManger, AppDbcontext context) : Hu
             ?.ConnectionId;
         if (connectionId != null)
             await Clients.Client(connectionId).SendAsync("TypingNotification", senderUserName);
+    }
+
+    public async Task ReactToMessage(int messageId, string emoji)
+    {
+        var trimmedEmoji = emoji?.Trim() ?? string.Empty;
+        if (messageId <= 0 || string.IsNullOrWhiteSpace(trimmedEmoji) || trimmedEmoji.Length > 32)
+        {
+            return;
+        }
+
+        var currentUser = await ResolveCurrentUserAsync();
+        if (currentUser == null)
+        {
+            return;
+        }
+
+        var message = await _context.Messages.FirstOrDefaultAsync(m => m.Id == messageId);
+        if (message == null || (message.SenderId != currentUser.Id && message.ReceiverId != currentUser.Id))
+        {
+            return;
+        }
+
+        var existing = await _context.MessageReactions
+            .FirstOrDefaultAsync(r => r.MessageId == messageId && r.UserId == currentUser.Id);
+
+        string action;
+        if (existing != null && existing.Emoji == trimmedEmoji)
+        {
+            _context.MessageReactions.Remove(existing);
+            action = "removed";
+        }
+        else if (existing != null)
+        {
+            existing.Emoji = trimmedEmoji;
+            existing.CreatedAt = DateTime.UtcNow;
+            action = "updated";
+        }
+        else
+        {
+            _context.MessageReactions.Add(new MessageReaction
+            {
+                MessageId = messageId,
+                UserId = currentUser.Id,
+                Emoji = trimmedEmoji,
+                CreatedAt = DateTime.UtcNow
+            });
+            action = "added";
+        }
+
+        await _context.SaveChangesAsync();
+
+        var updatedReactions = await _context.MessageReactions
+            .Where(r => r.MessageId == messageId)
+            .OrderBy(r => r.CreatedAt)
+            .ToListAsync();
+
+        var payload = new
+        {
+            MessageId = messageId,
+            SenderId = message.SenderId,
+            ReceiverId = message.ReceiverId,
+            ReactedByUserId = currentUser.Id,
+            ReactedByName = string.IsNullOrWhiteSpace(currentUser.FullName)
+                ? currentUser.UserName
+                : currentUser.FullName,
+            Emoji = trimmedEmoji,
+            Action = action,
+            Reactions = updatedReactions
+        };
+
+        await Clients.Caller.SendAsync("ReceiveReaction", payload);
+
+        var peerId = message.SenderId == currentUser.Id ? message.ReceiverId : message.SenderId;
+        if (!string.IsNullOrEmpty(peerId) && peerId != currentUser.Id)
+        {
+            var peer = await _userManger.FindByIdAsync(peerId);
+            if (peer != null &&
+                !string.IsNullOrEmpty(peer.UserName) &&
+                onlineUsers.TryGetValue(peer.UserName, out var onlinePeer) &&
+                !string.IsNullOrEmpty(onlinePeer.ConnectionId))
+            {
+                await Clients.Client(onlinePeer.ConnectionId).SendAsync("ReceiveReaction", payload);
+            }
+        }
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

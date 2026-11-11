@@ -1,0 +1,28 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-color: #000000;
+}
+
+.video-call-shell {
+  font-family: 'Inter', 'Roboto', sans-serif;
+}
+
+.control-btn {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.control-btn:active {
+  transform: scale(0.93);
+}
+
+#pip-window {
+  touch-action: none;
+  transition: box-shadow 0.2s ease;
+}
+
+#pip-window:active {
+  cursor: grabbing;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}

@@ -1,4 +1,8 @@
-<div class="window-wrapper">
+<div
+  class="window-wrapper"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)">
   @if (!selectedUser) {
     <!-- Empty State matching media_1790965433066.png with chatopen.svg -->
     <div class="empty-window-state">
@@ -47,18 +51,97 @@
           </span>
         </div>
       </div>
+
+      <div class="header-actions">
+        <button
+          type="button"
+          class="video-call-btn"
+          (click)="startVideoCall()"
+          [disabled]="!selectedUser.id"
+          aria-label="Start video call"
+          title="Start video call">
+          <svg class="video-call-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Messages List -->
     <app-chat-box [selectedUser]="selectedUser"></app-chat-box>
 
+    @if (isDragOver()) {
+      <div class="drag-drop-overlay" aria-hidden="true">
+        <div class="drag-drop-card">
+          <span>Drop image or file to attach</span>
+        </div>
+      </div>
+    }
+
     <!-- Message Input Bar -->
     <div class="message-input-area">
+      <input
+        #photoInput
+        type="file"
+        class="hidden"
+        accept="image/jpeg,image/png,image/gif,image/webp,image/bmp"
+        (change)="onFileSelected($event)" />
+      <input
+        #fileInput
+        type="file"
+        class="hidden"
+        accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.pdf,.doc,.docx,.ppt,.pptx,.zip,.rar,.7z,.tar,.gz,.txt,.csv,.md"
+        (change)="onFileSelected($event)" />
+
+      @if (pendingFile(); as file) {
+        <div class="pending-attachment-bar">
+          <div class="pending-attachment-info">
+            @if (pendingImagePreviewUrl()) {
+              <img [src]="pendingImagePreviewUrl()" [alt]="file.name" class="pending-thumb" />
+            } @else {
+              <span class="pending-file-badge">{{ getPendingFileBadge(file) }}</span>
+            }
+            <div class="pending-file-meta">
+              <span class="pending-file-name" [title]="file.name">{{ file.name }}</span>
+              <span class="pending-file-size">{{ formatFileSize(file.size) }}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="pending-remove-btn"
+            (click)="clearPendingFile()"
+            [disabled]="isUploadingFile()"
+            aria-label="Remove attachment"
+            title="Remove attachment">
+            &times;
+          </button>
+        </div>
+      }
+
       <div class="composer-row">
         <!-- Camera Icon Button -->
-        <button type="button" class="composer-icon-btn" aria-label="Attach photo" title="Attach photo">
+        <button
+          type="button"
+          class="composer-icon-btn"
+          (click)="photoInput.click()"
+          [disabled]="isUploadingFile()"
+          aria-label="Attach photo"
+          title="Attach photo">
           <svg class="composer-svg" viewBox="0 0 24 24" fill="currentColor">
             <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.65 0-3 1.35-3 3s1.35 3 3 3 3-1.35 3-3-1.35-3-3-3z"/>
+          </svg>
+        </button>
+
+        <!-- Attach File (Paperclip) Button -->
+        <button
+          type="button"
+          class="composer-icon-btn"
+          (click)="fileInput.click()"
+          [disabled]="isUploadingFile()"
+          aria-label="Attach file"
+          title="Attach file (PDF, Word, PowerPoint, ZIP, Text)">
+          <svg class="composer-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
           </svg>
         </button>
 
@@ -127,23 +210,29 @@
             type="text" 
             [(ngModel)]="newMessage" 
             (input)="onTyping()"
+            (paste)="onPaste($event)"
             (keydown.enter)="sendMessage()" 
-            placeholder="Type your message here!" 
+            [placeholder]="pendingFile() ? 'Add a caption (optional)...' : 'Type your message here!'" 
             class="chat-text-input" 
           />
         </div>
 
-        <!-- Microphone (idle) / Send (when typing) -->
-        @if (newMessage.trim()) {
+        <!-- Microphone (idle) / Send (when typing or attachment selected) -->
+        @if (newMessage.trim() || pendingFile()) {
           <button 
             type="button" 
             (click)="sendMessage()" 
+            [disabled]="isUploadingFile()"
             class="send-message-btn" 
             aria-label="Send"
-            title="Send">
-            <svg class="send-icon" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-            </svg>
+            [title]="isUploadingFile() ? 'Sending...' : 'Send'">
+            @if (isUploadingFile()) {
+              <span class="upload-spinner" aria-hidden="true"></span>
+            } @else {
+              <svg class="send-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            }
           </button>
         } @else {
           <button type="button" class="composer-icon-btn" aria-label="Voice message" title="Voice message">

@@ -8,6 +8,7 @@ export interface User {
     email?: string;
     connectionId?: string;
     lastMessage?: string;
+    lastReactionText?: string;
     unreadCount?: number;
     isTyping?: boolean;
     IsTyping?: boolean;

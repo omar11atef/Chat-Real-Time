@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { ChatBox } from './chat-box';
 import { Chat } from '../../services/chat';
 import { AuthService } from '../../services/auth-service';
+import { ChatFileService } from '../../services/chat-file';
 import { Message } from '../../models/message';
 import { User } from '../../models/user';
 
@@ -11,12 +12,16 @@ describe('ChatBox', () => {
   let isLoadingSignal: ReturnType<typeof signal<boolean>>;
   let hasMoreSignal: ReturnType<typeof signal<boolean>>;
   let loadMessagesSpy: ReturnType<typeof vi.fn>;
+  let downloadAttachmentSpy: ReturnType<typeof vi.fn>;
+  let openAttachmentPreviewSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     messagesSignal = signal<Message[]>([]);
     isLoadingSignal = signal(false);
     hasMoreSignal = signal(false);
     loadMessagesSpy = vi.fn();
+    downloadAttachmentSpy = vi.fn();
+    openAttachmentPreviewSpy = vi.fn();
 
     const mockChatService = {
       isLoading: isLoadingSignal,
@@ -44,11 +49,19 @@ describe('ChatBox', () => {
       }),
     };
 
+    const mockChatFileService = {
+      getPreviewUrl: () => 'blob:http://localhost/preview-1',
+      downloadAttachment: downloadAttachmentSpy,
+      openAttachmentPreview: openAttachmentPreviewSpy,
+      formatFileSize: (bytes: number) => `${bytes} B`,
+    };
+
     await TestBed.configureTestingModule({
       imports: [ChatBox],
       providers: [
         { provide: Chat, useValue: mockChatService },
         { provide: AuthService, useValue: mockAuthService },
+        { provide: ChatFileService, useValue: mockChatFileService },
       ],
     }).compileComponents();
   });
@@ -121,5 +134,62 @@ describe('ChatBox', () => {
     btn!.click();
 
     expect(loadMessagesSpy).toHaveBeenCalledWith(2);
+  });
+
+  it('renders image and document attachments with preview and download actions', () => {
+    const fixture = TestBed.createComponent(ChatBox);
+    messagesSignal.set([
+      {
+        id: 10,
+        senderId: 'u-peer',
+        receiverId: 'u-self',
+        content: 'Photo caption',
+        createdData: '2026-11-11T19:00:00Z',
+        isRead: true,
+        attachmentId: 1,
+        attachment: {
+          id: 1,
+          originalFileName: 'pic.png',
+          contentType: 'image/png',
+          fileExtension: '.png',
+          fileCategory: 'image',
+          fileSize: 512,
+          downloadUrl: '/api/chat-files/1',
+        },
+      },
+      {
+        id: 11,
+        senderId: 'u-self',
+        receiverId: 'u-peer',
+        content: '',
+        createdData: '2026-11-11T19:01:00Z',
+        isRead: false,
+        attachmentId: 2,
+        attachment: {
+          id: 2,
+          originalFileName: 'deck.pptx',
+          contentType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          fileExtension: '.pptx',
+          fileCategory: 'powerpoint',
+          fileSize: 1024,
+          downloadUrl: '/api/chat-files/2',
+        },
+      },
+    ]);
+    fixture.detectChanges();
+
+    const img = fixture.nativeElement.querySelector('.attachment-image') as HTMLImageElement | null;
+    expect(img).toBeTruthy();
+    expect(img?.getAttribute('src')).toBe('blob:http://localhost/preview-1');
+
+    const fileCard = fixture.nativeElement.querySelector('.attachment-file-card') as HTMLElement | null;
+    expect(fileCard?.textContent).toContain('deck.pptx');
+    expect(fileCard?.textContent).toContain('PPTX');
+
+    const downloadBtn = fileCard?.querySelector('.attachment-btn.primary') as HTMLButtonElement | null;
+    downloadBtn?.click();
+    expect(downloadAttachmentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 2, originalFileName: 'deck.pptx' })
+    );
   });
 });

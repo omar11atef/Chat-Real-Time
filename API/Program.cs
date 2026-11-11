@@ -4,7 +4,9 @@ using API.Entities;
 using API.Hubs;
 using API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -32,7 +34,13 @@ builder.Services.AddIdentityCore<AppUser>()
     .AddDefaultTokenProviders();
 
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddSingleton<ChatFileService>();
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 30 * 1024 * 1024;
+});
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, ClaimsUserIdProvider>();
 
 builder.Services.AddAuthentication(options =>
 {
@@ -86,6 +94,16 @@ app.UseCors(x=>x.AllowAnyHeader().AllowAnyMethod().WithOrigins("http://localhost
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapAccountEndpoints();
+app.MapChatFileEndpoints();
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/chat-files", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return;
+    }
+    await next();
+});
 app.UseStaticFiles();
 app.MapHub<ChatHub>("hubs/chat");
 app.MapHub<ChatHub>("chatHub");

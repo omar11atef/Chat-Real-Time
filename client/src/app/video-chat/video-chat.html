@@ -1,0 +1,311 @@
+<div class="video-call-shell h-full w-full flex flex-col justify-between bg-black text-white m-0 p-0 overflow-hidden select-none">
+  <!-- Upper Main Stage Area -->
+  <main class="flex-1 min-h-0 w-full flex items-center justify-center p-2.5 sm:p-4 md:p-5 overflow-hidden">
+    <!-- Rounded Dark Gray Video Container -->
+    <div
+      #videoStage
+      id="video-stage"
+      class="relative w-full h-full bg-[#424242] rounded-[14px] flex flex-col items-center justify-center overflow-hidden shadow-2xl">
+      <!-- Remote Video Layer (always mounted so audio plays in audio-only mode too) -->
+      <video
+        #remoteVideo
+        autoplay
+        playsinline
+        class="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
+        [class.opacity-0]="!showRemoteVideo()"
+        [class.pointer-events-none]="!showRemoteVideo()"
+        [class.z-[1]]="showRemoteVideo()">
+      </video>
+
+      <!-- Top Left: Username Label (+ live timer & mute indicator when remote video is active) -->
+      <div class="absolute top-4 left-5 z-20 flex items-center space-x-2">
+        <span
+          class="remote-username text-xs sm:text-sm font-semibold tracking-wide transition-colors"
+          [class.text-[#9e9e9e]]="!showRemoteVideo()"
+          [class.text-white]="showRemoteVideo()"
+          [class.bg-black/45]="showRemoteVideo()"
+          [class.px-2.5]="showRemoteVideo()"
+          [class.py-1]="showRemoteVideo()"
+          [class.rounded-full]="showRemoteVideo()"
+          [class.backdrop-blur-sm]="showRemoteVideo()">
+          {{ remoteDisplayName() }}
+        </span>
+
+        @if (showRemoteVideo() && isCallActive()) {
+          <span class="bg-black/45 text-[#e5e5e5] text-xs font-bold tracking-widest font-mono px-2.5 py-1 rounded-full backdrop-blur-sm">
+            {{ formattedDuration() }}
+          </span>
+        }
+
+        @if (isCallActive() && !remoteAudioEnabled()) {
+          <span
+            class="bg-black/60 text-red-400 text-[11px] font-medium px-2.5 py-0.5 rounded-full backdrop-blur-sm"
+            title="Remote microphone muted">
+            Muted
+          </span>
+        }
+
+        @if (!isRemoteOnline()) {
+          <span
+            class="offline-badge-pill bg-amber-500/20 border border-amber-400/35 text-amber-300 text-[11px] font-medium px-2.5 py-0.5 rounded-full backdrop-blur-sm"
+            title="User is offline">
+            Offline
+          </span>
+        }
+      </div>
+
+      <!-- Top Right: Fullscreen Toggle Icon -->
+      <button
+        id="fullscreen-btn"
+        type="button"
+        (click)="toggleFullscreen()"
+        title="Toggle Fullscreen"
+        aria-label="Toggle Fullscreen"
+        class="absolute top-4 right-5 z-20 text-[#bdbdbd] hover:text-white transition-colors p-1.5 rounded focus:outline-none cursor-pointer"
+        [class.bg-black/35]="showRemoteVideo()"
+        [class.rounded-full]="showRemoteVideo()">
+        @if (!isFullscreen()) {
+          <svg id="fs-expand-icon" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+        } @else {
+          <svg id="fs-compress-icon" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+          </svg>
+        }
+      </button>
+
+      <!-- Center Avatar & Call Timer / Status (shown when audio-only, camera off, or ringing) -->
+      @if (!showRemoteVideo()) {
+        <div class="relative z-10 flex flex-col items-center justify-center transform -translate-y-2">
+          <!-- Large Circular Avatar Ring -->
+          <div
+            id="main-avatar"
+            class="w-40 h-40 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-full border-[3.5px] border-[#262626] flex items-center justify-center relative transition-transform duration-300"
+            [class.animate-pulse]="!isCallActive()">
+            <!-- User Silhouette SVG -->
+            <svg class="w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 text-[#262626]" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 12.5c2.485 0 4.5-2.015 4.5-4.5S14.485 3.5 12 3.5 7.5 5.515 7.5 8s2.015 4.5 4.5 4.5z"/>
+              <path d="M12 14.2c-4.2 0-7.8 2.1-8.5 5.1-.15.65.35 1.2 1 1.2h15c.65 0 1.15-.55 1-1.2-.7-3-4.3-5.1-8.5-5.1z"/>
+            </svg>
+          </div>
+
+          <!-- Call Timer / Ringing / Offline Status -->
+          @if (isCallActive()) {
+            <div id="call-timer" class="mt-5 text-[#9e9e9e] text-xs sm:text-sm md:text-base font-bold tracking-widest font-mono">
+              {{ formattedDuration() }}
+            </div>
+            @if (!isRemoteOnline()) {
+              <div id="offline-status-banner" class="mt-2 bg-amber-500/15 border border-amber-400/30 text-amber-200 text-xs px-3.5 py-1.5 rounded-full backdrop-blur-sm">
+                {{ remoteDisplayName() }} is offline right now
+              </div>
+            }
+          } @else if (isIncomingCall()) {
+            <div id="call-timer" class="mt-5 text-emerald-400 text-xs sm:text-sm md:text-base font-bold tracking-widest font-mono">
+              Incoming call...
+            </div>
+          } @else if (!isRemoteOnline()) {
+            <div id="offline-status-banner" class="mt-5 flex flex-col items-center gap-2 text-center px-4">
+              <span class="text-amber-300 text-xs sm:text-sm md:text-base font-semibold tracking-wide">
+                {{ remoteDisplayName() }} is offline
+              </span>
+              <span class="bg-amber-500/15 border border-amber-400/30 text-amber-200 text-xs px-3.5 py-1.5 rounded-full backdrop-blur-sm">
+                This user is not active right now.
+              </span>
+            </div>
+          } @else {
+            <div id="call-timer" class="mt-5 text-[#9e9e9e] text-xs sm:text-sm md:text-base font-bold tracking-widest font-mono">
+              Calling...
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Bottom Left: Draggable Picture-in-Picture (Self View) -->
+      <div
+        #pipWindow
+        id="pip-window"
+        title="Drag to move"
+        (pointerdown)="onPipPointerDown($event)"
+        (pointermove)="onPipPointerMove($event)"
+        (pointerup)="onPipPointerUp()"
+        (pointercancel)="onPipPointerUp()"
+        [style.left.px]="pipLeft()"
+        [style.top.px]="pipTop()"
+        [style.bottom]="pipLeft() === null ? '16px' : 'auto'"
+        class="absolute w-32 h-20 sm:w-44 sm:h-28 md:w-48 md:h-32 bg-[#333333] rounded-[8px] flex items-center justify-center cursor-grab shadow-md z-20 border border-white/5 overflow-hidden"
+        [class.left-4]="pipLeft() === null">
+        <video
+          #localVideo
+          autoplay
+          playsinline
+          [muted]="true"
+          class="w-full h-full object-cover scale-x-[-1]"
+          [class.hidden]="!showLocalPreview()">
+        </video>
+
+        @if (!showLocalPreview()) {
+          <svg id="pip-avatar" class="w-10 h-10 sm:w-12 sm:h-12 text-[#787878]" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v1.5c0 .28.22.5.5.5h15c.28 0 .5-.22.5-.5V18c0-2.66-5.33-4-8-4z"/>
+          </svg>
+        }
+      </div>
+
+      <!-- Toast Notification for UI Feedback -->
+      <div
+        id="status-toast"
+        class="pointer-events-none transition-opacity duration-300 absolute top-5 left-1/2 -translate-x-1/2 bg-black/75 text-white text-xs px-3.5 py-1.5 rounded-full backdrop-blur-sm z-40"
+        [class.opacity-100]="!!toastMessage()"
+        [class.opacity-0]="!toastMessage()">
+        {{ toastMessage() || 'Status Updated' }}
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Dark Control Bar (no share or message buttons) -->
+  <footer class="w-full h-14 sm:h-16 bg-[#1b1b1b] flex items-center justify-between px-3 sm:px-6 z-30 border-t border-white/[0.04] shrink-0">
+    <!-- Left Section: Small Upward Caret & Audio/Video Mode Switcher -->
+    <div class="relative flex items-center w-24 sm:w-32">
+      <button
+        id="caret-btn"
+        type="button"
+        (click)="toggleModeMenu($event)"
+        class="text-[#8c8c8c] hover:text-white p-1.5 rounded transition-colors focus:outline-none cursor-pointer"
+        title="Audio & Video Mode"
+        aria-label="Audio and video mode options"
+        [attr.aria-expanded]="isModeMenuOpen()">
+        <svg class="w-3.5 h-3.5 transition-transform duration-150" [class.rotate-180]="isModeMenuOpen()" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+      </button>
+
+      @if (isModeMenuOpen()) {
+        <div
+          class="mode-popover absolute bottom-[calc(100%+10px)] left-0 w-44 bg-[#262626] border border-white/10 rounded-xl shadow-2xl p-1.5 z-40"
+          role="menu"
+          aria-label="Call media mode">
+          <button
+            type="button"
+            role="menuitem"
+            (click)="setCallMode('audio-video')"
+            class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer"
+            [class.bg-[#2d8cff]]="isCameraOn()"
+            [class.text-white]="isCameraOn()"
+            [class.text-zinc-300]="!isCameraOn()"
+            [class.hover:bg-white/10]="!isCameraOn()">
+            <span>Audio &amp; Video</span>
+            @if (isCameraOn()) {
+              <span>✓</span>
+            }
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            (click)="setCallMode('audio-only')"
+            class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors mt-1 cursor-pointer"
+            [class.bg-[#2d8cff]]="!isCameraOn()"
+            [class.text-white]="!isCameraOn()"
+            [class.text-zinc-300]="isCameraOn()"
+            [class.hover:bg-white/10]="isCameraOn()">
+            <span>Audio Only</span>
+            @if (!isCameraOn()) {
+              <span>✓</span>
+            }
+          </button>
+        </div>
+      }
+    </div>
+
+    <!-- Center Section: Primary Call Controls (Camera, Mic, Accept when incoming, End Call) -->
+    <div class="flex items-center space-x-3 sm:space-x-3.5">
+      <!-- 1. Video Camera Toggle Button -->
+      <button
+        id="cam-btn"
+        type="button"
+        (click)="toggleCamera()"
+        [attr.aria-pressed]="isCameraOn()"
+        aria-label="Toggle Video"
+        [title]="isCameraOn() ? 'Turn off video (Audio only)' : 'Turn on video'"
+        class="control-btn w-10 h-9 sm:w-11 sm:h-10 rounded-[9px] flex items-center justify-center shadow-sm focus:outline-none cursor-pointer"
+        [class.bg-white]="isCameraOn()"
+        [class.hover:bg-gray-200]="isCameraOn()"
+        [class.text-black]="isCameraOn()"
+        [class.bg-[#3a3a3a]]="!isCameraOn()"
+        [class.hover:bg-[#4a4a4a]]="!isCameraOn()"
+        [class.text-red-400]="!isCameraOn()">
+        @if (isCameraOn()) {
+          <svg id="cam-on-icon" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15 8v8H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2zm2 2.5l4-3v9l-4-3v-3z"/>
+          </svg>
+        } @else {
+          <svg id="cam-off-icon" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+        }
+      </button>
+
+      <!-- 2. Microphone Toggle Button -->
+      <button
+        id="mic-btn"
+        type="button"
+        (click)="toggleMic()"
+        [attr.aria-pressed]="isMicOn()"
+        aria-label="Toggle Microphone"
+        [title]="isMicOn() ? 'Mute Microphone' : 'Unmute Microphone'"
+        class="control-btn w-10 h-9 sm:w-11 sm:h-10 text-white rounded-[9px] flex items-center justify-center shadow-sm focus:outline-none cursor-pointer"
+        [class.bg-[#2d8cff]]="isMicOn()"
+        [class.hover:bg-[#1a7ae8]]="isMicOn()"
+        [class.bg-[#3a3a3a]]="!isMicOn()"
+        [class.hover:bg-[#4a4a4a]]="!isMicOn()">
+        @if (isMicOn()) {
+          <svg id="mic-on-icon" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="11" rx="3" fill="currentColor"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="8" y1="22" x2="16" y2="22"/>
+          </svg>
+        } @else {
+          <svg id="mic-off-icon" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="1" y1="1" x2="23" y2="23"/>
+            <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+            <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="8" y1="22" x2="16" y2="22"/>
+          </svg>
+        }
+      </button>
+
+      <!-- 3. Accept Call Button (only visible for incoming ringing calls) -->
+      @if (isIncomingCall() && !isCallActive()) {
+        <button
+          id="accept-btn"
+          type="button"
+          (click)="acceptCall()"
+          aria-label="Accept Call"
+          title="Accept Call"
+          class="control-btn w-10 h-9 sm:w-11 sm:h-10 bg-[#22c55e] hover:bg-[#16a34a] text-white rounded-[9px] flex items-center justify-center shadow-sm focus:outline-none cursor-pointer">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 0 0-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+          </svg>
+        </button>
+      }
+
+      <!-- 4. End / Decline Call Button -->
+      <button
+        id="end-btn"
+        type="button"
+        (click)="endCall()"
+        [attr.aria-label]="isIncomingCall() && !isCallActive() ? 'Decline Call' : 'End Call'"
+        [title]="isIncomingCall() && !isCallActive() ? 'Decline Call' : 'End Call'"
+        class="control-btn w-10 h-9 sm:w-11 sm:h-10 bg-[#f23f2c] hover:bg-[#d93221] text-white rounded-[9px] flex items-center justify-center shadow-sm focus:outline-none cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.956.956 0 0 1-.29-.7c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28a11.27 11.27 0 0 0-2.67-1.85.996.996 0 0 1-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Right Section: Balancing Spacer (Share & Message buttons intentionally omitted) -->
+    <div class="w-24 sm:w-32"></div>
+  </footer>
+</div>

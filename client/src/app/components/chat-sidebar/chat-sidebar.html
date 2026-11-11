@@ -105,6 +105,10 @@
             <span class="contact-unread">
               {{ user.unreadCount }} new messages
             </span>
+          } @else if (user.lastReactionText) {
+            <span class="contact-reaction-preview">
+              {{ user.lastReactionText }}
+            </span>
           }
         </div>
 

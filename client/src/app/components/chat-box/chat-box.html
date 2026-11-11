@@ -25,46 +25,242 @@
     <ul class="chat-list">
       @for (item of chatMessages(); track (item.id || $index)) {
         @let mine = isOwnMessage(item);
-        <li [class.out]="mine" [class.in]="!mine">
-          <div class="chat-img">
-            @if (getSenderAvatar(mine)) {
-              <img
-                [src]="getSenderAvatar(mine)"
-                [alt]="getSenderDisplayName(mine)"
-              />
-            } @else {
-              <div class="chat-avatar-fallback">
-                {{ getSenderInitials(mine) }}
-              </div>
-            }
-          </div>
-
-          <div class="chat-body">
-            <div class="chat-message">
-              <h5>{{ getSenderDisplayName(mine) | titlecase }}</h5>
-              <p>{{ item.content }}</p>
-              <div class="chat-meta">
-                <span class="chat-time">
-                  {{ (item.createdData || item.createdAt) | date:'short' }}
-                </span>
-                @if (mine) {
-                  <span
-                    class="read-receipt"
-                    [class.read]="item.isRead"
-                    [class.unread]="!item.isRead"
-                    [title]="item.isRead ? 'Read' : 'Sent (unread)'"
-                    [attr.aria-label]="item.isRead ? 'Read' : 'Unread'">
-                    <svg class="double-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M1.5 12.5l4.2 4.2L14.5 7.5" />
-                      <path d="M8.5 14.2l2.5 2.5L21.5 6.5" />
-                    </svg>
-                  </span>
+        @let callLog = getCallLog(item);
+        @if (callLog) {
+          <li class="call-log-row" [class.call-log-unanswered]="callLog.status !== 'completed'">
+            <div class="call-log-card">
+              <div
+                class="call-log-icon"
+                [class.completed]="callLog.status === 'completed'"
+                [class.unanswered]="callLog.status !== 'completed'">
+                @if (callLog.callType === 'audio') {
+                  <svg class="call-log-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 0 0-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+                  </svg>
+                } @else {
+                  <svg class="call-log-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                  </svg>
                 }
               </div>
+
+              <div class="call-log-details">
+                <div class="call-log-title-line">
+                  <span class="call-log-title">{{ getCallLogTitle(callLog, mine) }}</span>
+                  <span class="call-log-status" [class.completed]="callLog.status === 'completed'">
+                    {{ getCallLogStatusLabel(callLog) }}
+                  </span>
+                </div>
+                <div class="call-log-meta">
+                  <span class="call-log-duration">Duration: {{ formatCallDuration(callLog.durationSeconds) }}</span>
+                  <span class="call-log-sep">•</span>
+                  <span class="call-log-date">{{ (callLog.endedAt || item.createdData || item.createdAt) | date:'medium' }}</span>
+                </div>
+              </div>
             </div>
-          </div>
-        </li>
+          </li>
+        } @else {
+          <li [class.out]="mine" [class.in]="!mine">
+            <div class="chat-img">
+              @if (getSenderAvatar(mine)) {
+                <img
+                  [src]="getSenderAvatar(mine)"
+                  [alt]="getSenderDisplayName(mine)"
+                />
+              } @else {
+                <div class="chat-avatar-fallback">
+                  {{ getSenderInitials(mine) }}
+                </div>
+              }
+            </div>
+
+            <div class="chat-body">
+              <div
+                class="chat-message"
+                [class.long-pressing]="pressingMessageId() === item.id"
+                (pointerdown)="onMessagePointerDown($event, item)"
+                (pointermove)="onMessagePointerMove($event)"
+                (pointerup)="onMessagePointerEnd()"
+                (pointercancel)="onMessagePointerEnd()"
+                (pointerleave)="onMessagePointerEnd()"
+                (contextmenu)="onMessageContextMenu($event, item)"
+                (click)="onMessageClickCapture($event)">
+                @if (activeReactionMessageId() === item.id) {
+                  <div
+                    class="reaction-picker-popover"
+                    [class.place-bottom]="reactionPickerPlacement() === 'bottom'"
+                    [class.align-right]="mine"
+                    (pointerdown)="$event.stopPropagation()"
+                    (click)="$event.stopPropagation()"
+                    role="dialog"
+                    aria-label="React to message">
+                    <div class="reaction-quick-bar">
+                      @for (emoji of quickReactionEmojis; track emoji) {
+                        <button
+                          type="button"
+                          class="reaction-emoji-btn"
+                          [class.active]="hasUserReacted(item, emoji)"
+                          [attr.aria-label]="'React with ' + emoji"
+                          (click)="selectReaction($event, item.id, emoji)">
+                          {{ emoji }}
+                        </button>
+                      }
+                      <button
+                        type="button"
+                        class="reaction-more-btn"
+                        [class.active]="showMoreReactionEmojis()"
+                        aria-label="More emojis"
+                        title="More emojis"
+                        (click)="toggleMoreReactionEmojis($event)">
+                        +
+                      </button>
+                    </div>
+
+                    @if (showMoreReactionEmojis()) {
+                      <div class="reaction-more-grid">
+                        @for (emoji of extraReactionEmojis; track emoji) {
+                          <button
+                            type="button"
+                            class="reaction-emoji-btn small"
+                            [class.active]="hasUserReacted(item, emoji)"
+                            [attr.aria-label]="'React with ' + emoji"
+                            (click)="selectReaction($event, item.id, emoji)">
+                            {{ emoji }}
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+
+                <h5>{{ getSenderDisplayName(mine) | titlecase }}</h5>
+
+                @if (item.attachment; as att) {
+                  @if (att.fileCategory === 'image') {
+                    <div class="attachment-image-wrapper">
+                      @if (getAttachmentPreviewUrl(att); as previewSrc) {
+                        <button
+                          type="button"
+                          class="attachment-image-btn"
+                          (click)="openImageLightbox(att)"
+                          [title]="'View ' + att.originalFileName">
+                          <img [src]="previewSrc" [alt]="att.originalFileName" class="attachment-image" />
+                        </button>
+                      } @else {
+                        <div class="attachment-image-loading">
+                          <div class="loading-spinner"></div>
+                          <span>Decrypting image...</span>
+                        </div>
+                      }
+                      <div class="attachment-image-footer">
+                        <span class="attachment-caption-name" [title]="att.originalFileName">{{ att.originalFileName }}</span>
+                        <button
+                          type="button"
+                          class="attachment-action-link"
+                          (click)="downloadAttachment(att)">
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="attachment-file-card" [class.mine]="mine">
+                      <div class="attachment-file-badge" [attr.data-category]="att.fileCategory">
+                        {{ getAttachmentBadge(att) }}
+                      </div>
+                      <div class="attachment-file-info">
+                        <span class="attachment-file-name" [title]="att.originalFileName">
+                          {{ att.originalFileName }}
+                        </span>
+                        <span class="attachment-file-size">
+                          {{ formatAttachmentSize(att.fileSize) }}
+                        </span>
+                      </div>
+                      <div class="attachment-file-actions">
+                        @if (canPreviewAttachment(att)) {
+                          <button
+                            type="button"
+                            class="attachment-btn"
+                            (click)="openAttachmentPreview(att)"
+                            title="Open file">
+                            Open
+                          </button>
+                        }
+                        <button
+                          type="button"
+                          class="attachment-btn primary"
+                          (click)="downloadAttachment(att)"
+                          title="Download file">
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  }
+                }
+
+                @if (item.content) {
+                  <p>{{ item.content }}</p>
+                }
+
+                <div class="chat-meta">
+                  <span class="chat-time">
+                    {{ (item.createdData || item.createdAt) | date:'short' }}
+                  </span>
+                  @if (mine) {
+                    <span
+                      class="read-receipt"
+                      [class.read]="item.isRead"
+                      [class.unread]="!item.isRead"
+                      [title]="item.isRead ? 'Read' : 'Sent (unread)'"
+                      [attr.aria-label]="item.isRead ? 'Read' : 'Unread'">
+                      <svg class="double-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1.5 12.5l4.2 4.2L14.5 7.5" />
+                        <path d="M8.5 14.2l2.5 2.5L21.5 6.5" />
+                      </svg>
+                    </span>
+                  }
+                </div>
+              </div>
+
+              @let groupedReactions = getGroupedReactions(item);
+              @if (groupedReactions.length > 0) {
+                <div class="message-reactions-row" [class.mine]="mine">
+                  @for (reaction of groupedReactions; track reaction.emoji) {
+                    <button
+                      type="button"
+                      class="message-reaction-pill"
+                      [class.reacted-by-me]="reaction.reactedByMe"
+                      [title]="reaction.tooltip"
+                      [attr.aria-label]="reaction.tooltip"
+                      (click)="selectReaction($event, item.id, reaction.emoji)">
+                      <span class="reaction-pill-emoji">{{ reaction.emoji }}</span>
+                      @if (reaction.count > 1) {
+                        <span class="reaction-pill-count">{{ reaction.count }}</span>
+                      }
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </li>
+        }
       }
     </ul>
   }
 </div>
+
+@if (lightboxAttachment(); as previewAtt) {
+  <div class="image-lightbox-backdrop" (click)="closeImageLightbox()" role="dialog" aria-label="Image preview">
+    <div class="image-lightbox-dialog" (click)="$event.stopPropagation()">
+      <div class="image-lightbox-header">
+        <span class="image-lightbox-title">{{ previewAtt.originalFileName }}</span>
+        <div class="image-lightbox-actions">
+          <button type="button" class="lightbox-btn" (click)="downloadAttachment(previewAtt)">Download</button>
+          <button type="button" class="lightbox-close-btn" (click)="closeImageLightbox()" aria-label="Close preview">&times;</button>
+        </div>
+      </div>
+      @if (getAttachmentPreviewUrl(previewAtt); as fullSrc) {
+        <img [src]="fullSrc" [alt]="previewAtt.originalFileName" class="image-lightbox-img" />
+      }
+    </div>
+  </div>
+}
