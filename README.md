@@ -227,23 +227,6 @@ Make sure you have the following installed on your machine:
 git clone <your-repository-url>
 cd Chat-Real-Time
 ```
-
-### 2. Configure the Backend (`API/appsettings.json`)
-Inspect `API/appsettings.json` and update the database connection string and keys if needed:
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=ChatApplciationUI;Integrated Security=True;Trust Server Certificate=True"
-  },
-  "Jwt": {
-    "Key": "This is a secret key for JWT token generation",
-    "Issuer": "ChatApp",
-    "Audience": "ChatAppUsers"
-  },
-  "FileEncryption": {
-    "Key": "ChatApp-Encrypted-Attachment-AES256-Key-2026"
-  }
-}
 ```
 > **Note:** If you use a full SQL Server instance instead of LocalDB, replace `Data Source=(localdb)\MSSQLLocalDB` with your server name.
 
